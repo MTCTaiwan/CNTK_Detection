@@ -6,5 +6,5 @@ ENV LD_LIBRARY_PATH "/cntk/cntk/lib:/cntk/cntk/dependencies/lib:/root/openmpi/li
 RUN apt update && apt install -y libsm6 libxext6 libxrender1 && rm -rf /var/lib/apt/lists/*
 RUN /bin/bash -c "source /root/anaconda3/bin/activate /root/anaconda3/envs/cntk-py35; pip install easydict opencv-python tqdm"
 
-COPY ../Detection /cntk/Examples/Image/Detection
+COPY Detection /cntk/Examples/Image/Detection
 WORKDIR /cntk/Examples/Image/Detection/FasterRCNN

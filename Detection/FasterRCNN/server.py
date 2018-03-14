@@ -48,11 +48,12 @@ class Server(BaseHTTPRequestHandler):
         self._set_img_headers()
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         content_type = 'png' if ('png' in self.headers['Content-Type']) else 'jpg'
-        raw_data = self.rfile.read(content_length) # <--- Gets the data itself
         try:
+            raw_data = self.rfile.read(content_length) # <--- Gets the data itself
             data = json.loads(raw_data.decode('utf8'))["input_df"][0]['image base64 string']
         except Exception as err:
             print("[ERROR]", err)
+            return
 
         results["results"] = get_results(self.evaluator, data, self.cfg)
         results["status"] = True

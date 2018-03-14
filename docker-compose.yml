@@ -2,7 +2,8 @@ version: '3'
 services:
   prepare:
     image: "adreeve/python-numpy:latest"
-    command: ["bash", "-c", "pip install easydict pyopenssl && python -u /data/prepare/install.py"]
+    working_dir: /data/prepare
+    command: ["bash", "-c", "pip install easydict pyopenssl && python -u install.py"]
     volumes:
       - ./DataSets:/data/DataSets
       - ./Output:/data/Output
@@ -34,7 +35,6 @@ services:
 
   web:
     image: "node:8"
-    user: "node"
     working_dir: /home/node/app
     environment:
       - NODE_ENV=production
@@ -42,6 +42,6 @@ services:
       - ./web:/home/node/app
     ports:
       - "443:3000"
-    command: "npm start"
+    command: ["bash", "-c", "npm install && npm start"]
     links:
       - predict
