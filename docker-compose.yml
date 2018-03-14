@@ -1,0 +1,47 @@
+version: '3'
+services:
+  prepare:
+    image: "adreeve/python-numpy:latest"
+    command: ["bash", "-c", "pip install easydict pyopenssl && python -u /data/prepare/install.py"]
+    volumes:
+      - ./DataSets:/data/DataSets
+      - ./Output:/data/Output
+      - ./configs:/data/configs
+      - ./PretrainedModels:/data/PretrainedModels
+      - ./web:/data/web
+      - ./prepare:/data/prepare
+    
+  predict:
+    image: "starcaspar/rod:latest"
+    command: ["bash", "-c", "source /root/anaconda3/bin/activate /root/anaconda3/envs/cntk-py35 && python -u score.py"]
+    devices:
+      - /dev/nvidia0
+    volumes:
+      - ./DataSets:/cntk/Examples/Image/DataSets
+      - ./Output:/cntk/Examples/Image/Detection/FasterRCNN/Output
+      - ./configs:/cntk/Examples/Image/Detection/utils/configs
+
+  train:
+    image: "starcaspar/rod:latest"
+    command: ["bash", "-c", "source /root/anaconda3/bin/activate /root/anaconda3/envs/cntk-py35 && python -u train.py"]
+    devices:
+      - /dev/nvidia0
+    volumes:
+      - ./DataSets:/cntk/Examples/Image/DataSets
+      - ./Output:/cntk/Examples/Image/Detection/FasterRCNN/Output
+      - ./configs:/cntk/Examples/Image/Detection/utils/configs
+      - ./PretrainedModels:/cntk/PretrainedModels
+
+  web:
+    image: "node:8"
+    user: "node"
+    working_dir: /home/node/app
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./web:/home/node/app
+    ports:
+      - "443:3000"
+    command: "npm start"
+    links:
+      - predict

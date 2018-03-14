@@ -1,0 +1,28 @@
+{
+  "name": "rod-standalone",
+  "version": "1.0.0",
+  "description": "Realtime Object Detection Demo (Standalone)",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MTCTaiwan/Realtime-Object-Detection-Demo.git"
+  },
+  "keywords": [
+    "cntk",
+    "object-detction\u001b[D\u001b[D\u001b[D\u001b[D\u001b[De\u001b[C\u001b[C\u001b[C\u001b[D\u001b[D\u001b[Dction",
+    "microsoft"
+  ],
+  "author": "Caspar Chou (v-caspch@microsoft.com)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MTCTaiwan/Realtime-Object-Detection-Demo/issues"
+  },
+  "homepage": "https://github.com/MTCTaiwan/Realtime-Object-Detection-Demo#readme",
+  "dependencies": {
+    "express": "^4.16.2",
+    "express-http-proxy": "^1.1.0"
+  }
+}
