@@ -1,0 +1,8 @@
+```
+nvidia-docker-compose up web-lb predict-lb predict
+nvidia-docker-compose scale predict=2
+```
+
+```
+nvidia-docker-compose up web predict
+```

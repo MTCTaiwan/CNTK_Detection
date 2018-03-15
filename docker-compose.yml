@@ -11,7 +11,12 @@ services:
       - ./PretrainedModels:/data/PretrainedModels
       - ./web:/data/web
       - ./prepare:/data/prepare
-    
+ 
+  predict-lb:
+    image: "tutum/haproxy"
+    links:
+      - predict:predict
+ 
   predict:
     image: "starcaspar/rod:latest"
     command: ["bash", "-c", "source /root/anaconda3/bin/activate /root/anaconda3/envs/cntk-py35 && python -u score.py"]
@@ -21,6 +26,8 @@ services:
       - ./DataSets:/cntk/Examples/Image/DataSets
       - ./Output:/cntk/Examples/Image/Detection/FasterRCNN/Output
       - ./configs:/cntk/Examples/Image/Detection/utils/configs
+    expose:
+      - 8002
 
   train:
     image: "starcaspar/rod:latest"
@@ -32,6 +39,19 @@ services:
       - ./Output:/cntk/Examples/Image/Detection/FasterRCNN/Output
       - ./configs:/cntk/Examples/Image/Detection/utils/configs
       - ./PretrainedModels:/cntk/PretrainedModels
+
+  web-lb:
+    image: "node:8"
+    working_dir: /home/node/app
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./web:/home/node/app
+    ports:
+      - "443:3000"
+    command: ["bash", "-c", "npm install && npm start"]
+    links:
+      - predict:predict_lb
 
   web:
     image: "node:8"
@@ -45,3 +65,5 @@ services:
     command: ["bash", "-c", "npm install && npm start"]
     links:
       - predict
+
+  
