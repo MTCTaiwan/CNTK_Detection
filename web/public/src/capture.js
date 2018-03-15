@@ -5,168 +5,151 @@
  *==============================================================================
 */
 
-(function () {
-  // The width and height of the captured photo. We will set the
-  // width to the value defined here, but the height will be
-  // calculated based on the aspect ratio of the input stream.
+; (() => {
 
-  var width = 800;    // We will scale the photo width to this
-  var height = 500;     // This will be computed based on the input stream
+  let config = {
+    width: 800,
+    height: 500,
+    streaming: false,
+    getMedia: {
+      video: {
+        width: 1280,
+        height: 720,
+        mirror: false
+      },
+      audio: false
+    },
+    quality: 1.0
+  }
 
-  // |streaming| indicates whether or not we're currently streaming
-  // video from the camera. Obviously, we start at false.
+  let time = Date.now()
 
-  var streaming = false;
-
-  // The various HTML elements we need to configure or control. These
-  // will be set by the startup() function.
-
-  var video = null;
-  var canvas = null;
-  var canvas2 = null;
-  var photo = null;
-  var time = Date.now()
-
-  function startup() {
-    video = document.getElementById('video');
-    canvas = document.getElementById('canvas');
-    canvas2 = document.getElementById('canvas2');
-    photo = document.getElementById('photo');
+  let startup = () => {
+    video = document.getElementById('video')
+    render = document.getElementById('canvas')
+    screenshot = document.getElementById('screenshot')
 
     navigator.getMedia = (navigator.getUserMedia ||
       navigator.webkitGetUserMedia ||
       navigator.mozGetUserMedia ||
-      navigator.msGetUserMedia);
+      navigator.msGetUserMedia)
 
-    navigator.getMedia(
-      {
-        video: { width: 1280, height: 720, mirror: false },
-        audio: false
-      },
-      function (stream) {
+    navigator.getMedia(config.getMedia,
+      (stream) => {
         if (navigator.mozGetUserMedia) {
-          video.mozSrcObject = stream;
+          video.mozSrcObject = stream
         } else {
-          var vendorURL = window.URL || window.webkitURL;
-          video.src = vendorURL.createObjectURL(stream);
+          var vendorURL = window.URL || window.webkitURL
+          video.src = vendorURL.createObjectURL(stream)
         }
-        video.play();
+        video.play()
       },
-      function (err) {
-        console.log("An error occured! " + err);
-      }
-    );
+      (err) => {
+        console.log("An error occured! " + err)
+      })
 
-    video.addEventListener('canplay', function (ev) {
-      if (!streaming) {
-        height = video.videoHeight / (video.videoWidth / width);
+    video.addEventListener('canplay',
+      (ev) => {
+        if (!config.streaming) {
+          width = config.width
+          height = config.height
 
-        // Firefox currently has a bug where the height can't be read from
-        // the video, so we will make assumptions if this happens.
+          video.setAttribute('width', width)
+          video.setAttribute('height', height)
+          render.setAttribute('width', width)
+          render.setAttribute('height', height)
+          screenshot.setAttribute('width', width)
+          screenshot.setAttribute('height', height)
 
-        if (isNaN(height)) {
-          height = width / (4 / 3);
+          config.streaming = true
         }
-        height = 500;
+      }, false)
 
-        video.setAttribute('width', width);
-        video.setAttribute('height', height);
-        canvas.setAttribute('width', width);
-        canvas.setAttribute('height', height);
-        canvas2.setAttribute('width', width);
-        canvas2.setAttribute('height', height);
+      frame =  screenshot.getContext('2d')
 
-        streaming = true;
-      }
-    }, false);
-    
-    setInterval(() => takepicture(2), 800);
 
-    clearphoto();
+    setInterval(() => request(video, frame, render), 600)
+
   }
 
   // Fill the photo with an indication that none has been
   // captured.
 
-  function clearphoto() {
-    var context = canvas.getContext('2d');
-    context.fillStyle = "#AAA";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-
-    var data = canvas.toDataURL('image/png').replace(/^data:image\/(png|jpg);base64,/, '');
+  let clearPhoto = (context) => {
+    context.fillStyle = "#AAA"
+    context.fillRect(0, 0, context.width, context.height)
   }
 
-  // Capture a photo by fetching the current contents of the video
-  // and drawing it into a canvas, then converting that to a PNG
-  // format data URL. By drawing it on an offscreen canvas and then
-  // drawing that to the screen, we can change its size and/or apply
-  // other changes before drawing it.
+  let takeframe = (video, frame) => {
+    frame.drawImage(video, 0, 0, video.width, video.height)
+    data = document.getElementById('screenshot').toDataURL('image/png', config.quality).replace('data:image/png;base64,', '')
+    return data
+  }
 
-  function takepicture(endpoint) {
-    if (width && height) {
-      canvas2.width = width;
-      canvas2.height = height;
-      ctx = canvas2.getContext('2d');
-      ctx.translate(width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, width, height);
-      var data = canvas2.toDataURL('image/png').replace(/^data:image\/(png|jpg);base64,/, '');
-      const sendTime = Date.now();
-      fetch("/score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ "input_df": [{
-            "image base64 string": data
-          }]
-        })
-      }).then(function (r) { return r.json(); }).then(function (response) {
-        if( sendTime < time ){
-          return
-        } else {
-          console.log("Latency: ", Date.now() - sendTime)
-        }
-        time = sendTime
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        ctx = canvas.getContext('2d')
-        response.results.forEach(each => {
-          console.log(each.name, each.box, each.score)
-          each.box.top -= 150;
-          each.box.bottom -= 150;
+  let handler = (result, context) => {
+    console.log(result.name, result.box, result.score)
+    result.box.top -= 150
+    result.box.bottom -= 150
 
-          ctx.beginPath();
-          ctx.lineWidth = "2";
-          ctx.strokeStyle = "rgba(230, 196, 34, 0.8)";
-          ctx.rect(each.box.left, each.box.top, each.box.right - each.box.left, each.box.bottom - each.box.top);
-          ctx.stroke();
-          ctx.closePath();
+    context.beginPath()
+    context.lineWidth = "2"
+    context.strokeStyle = "rgba(230, 196, 34, 0.8)"
+    context.rect(result.box.left, result.box.top, result.box.right - result.box.left, result.box.bottom - result.box.top)
+    context.stroke()
+    context.closePath()
 
+    context.beginPath()
+    var label = result.name + " (" + Math.round(result.score * 100) + "%)"
+    context.fillStyle = "rgba(230, 196, 34, 0.8)"
+    context.rect(result.box.left - 1, result.box.top - 22, label.length * 8 + 15, 22)
+    context.fill()
+    context.closePath()
 
-          ctx.beginPath();
-          var label = each.name + " (" + Math.round(each.score * 100) + "%)"
-          ctx.fillStyle = "rgba(230, 196, 34, 0.8)";
-          ctx.rect(each.box.left - 1, each.box.top - 22, label.length * 8 + 15, 22);
-          ctx.fill()
-          ctx.closePath();
+    context.beginPath()
+    context.font = "16px Microsoft JhengHei UI"
+    context.fillStyle = "white"
+    context.fillText(label, result.box.left + 5, result.box.top - 6)
+    context.closePath()
+  }
 
+  let request = (video, frame, render) => {
 
-          ctx.beginPath();
-          ctx.font = "16px Microsoft JhengHei UI"
-          ctx.fillStyle = "white"
-          ctx.fillText(label, each.box.left + 5, each.box.top - 6)
-          ctx.closePath();
+    frame.translate(video.width, 0);
+    frame.scale(-1, 1);
+    const data = takeframe(video, frame)
+    frame.scale(-1, 1);
+    frame.translate(-video.width, 0);
+    
+    const sendTime = Date.now()
 
-        })
-        drawRect = response.results
-      }).catch(e => {
-        console.log("Error", e)
+    fetch("/score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        "input_df": [{
+          "image base64 string": data
+        }]
       })
-      // photo.setAttribute('src', data);
-    } else {
-      clearphoto();
-    }
+    })
+    .then(r => r.json())
+    .then(response => {
+      if (sendTime < time) {return} else {
+        console.log(
+          "Latency: ", Date.now() - sendTime, 
+          "MessageGo:", response.verbose.received - sendTime, 
+          "Process:", (response.verbose.resloved - response.verbose.received),
+          'MessageBack:', Date.now() - response.verbose.resloved,
+          "Total:", (response.verbose.received - sendTime) + (response.verbose.resloved - response.verbose.received) + (Date.now() - response.verbose.resloved),
+          'Content-Length:', data.length,
+        )
+        time = sendTime
+      }
+      render.getContext('2d').clearRect(0, 0, config.width, config.height)
+      response.results.forEach(result => handler(result, render.getContext('2d')))
+    })
+    .catch(e => console.error(e))
+    clearPhoto(frame)
   }
 
-  // Set up our event listener to run the startup process
-  // once loading is complete.
-  window.addEventListener('load', startup, false);
-})();
+  window.addEventListener('load', startup, false)
+})()

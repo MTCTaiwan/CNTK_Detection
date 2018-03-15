@@ -4,8 +4,9 @@
 # for full license information.
 # ==============================================================================
 
-import os, threading, json
+import os, threading, json, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import urllib
 from socketserver import ThreadingMixIn
 from datetime import datetime
 from base64 import b64encode, b64decode
@@ -43,8 +44,8 @@ class Server(BaseHTTPRequestHandler):
         self._set_headers()
 
     def do_POST(self):
-        results = {'status':False, 'results':[], 'verbose':[]}
-        results["verbose"] += [log('Received')]
+        results = {'status':False, 'results':[], 'verbose':None}
+        received = str(int(time.time()*1000))
         self._set_img_headers()
         content_length = int(self.headers['Content-Length']) # <--- Gets the size of data
         content_type = 'png' if ('png' in self.headers['Content-Type']) else 'jpg'
@@ -57,7 +58,10 @@ class Server(BaseHTTPRequestHandler):
 
         results["results"] = get_results(self.evaluator, data, self.cfg)
         results["status"] = True
-        results["verbose"] += [log('Resolved')]
+        results["verbose"] = {
+          'received': received,
+          'resloved': str(int(time.time()*1000))
+        }
         self.wfile.write(bytes(json.dumps(results), "utf8"))
         
     @classmethod

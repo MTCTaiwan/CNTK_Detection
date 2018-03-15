@@ -27,7 +27,7 @@ html, body {
   position: absolute;
 }
 
-#canvas2 {
+#screenshot {
   position: absolute;
   z-index: -1;
   opacity: 0;
