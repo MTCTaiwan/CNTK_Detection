@@ -14,22 +14,46 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
  
   predict-lb:
-    image: "tutum/haproxy"
+    image: "eeacms/haproxy:latest"
     links:
-      - predict:predict
- 
-  predict:
+      {% for i in range(N_GPU) %}
+      - predict-core-{{i}}
+      {% endfor %}
+#    volumes:
+#      - ./haproxy.cfg:/etc/haproxy/haproxy.cfg
+    environment:
+      - DNS_ENABLED=true
+      - BACKENDS=172.18.0.2 172.18.0.3
+      - BACKENDS_PORT=8082
+      - FRONTEND_PORT=8082
+
+  {% for i in range(N_GPU) %} 
+  predict-core-{{i}}:
     image: "starcaspar/rod:latest"
-    command: ["bash", "-c", "source /root/anaconda3/bin/activate /root/anaconda3/envs/cntk-py35 && pip install docker && python -u score.py"]
+    command: ["bash", "-c", "source /root/anaconda3/bin/activate /root/anaconda3/envs/cntk-py35 && python -u score.py"]
     devices:
-      - /dev/nvidia1
+      - /dev/nvidia{{i}}
     volumes:
       - ./DataSets:/cntk/Examples/Image/DataSets
       - ./Output:/cntk/Examples/Image/Detection/FasterRCNN/Output
       - ./configs:/cntk/Examples/Image/Detection/utils/configs
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PYTHONUNBUFFERED=TRUE
     expose:
-      - 8002
+      - 8082
+  {% endfor %} 
+
+  predict:
+    image: "starcaspar/rod:latest"
+    command: ["bash", "-c", "source /root/anaconda3/bin/activate /root/anaconda3/envs/cntk-py35 && pip install docker && python -u score.py"]
+    devices:
+      - /dev/nvidia0
+    volumes:
+      - ./DataSets:/cntk/Examples/Image/DataSets
+      - ./Output:/cntk/Examples/Image/Detection/FasterRCNN/Output
+      - ./configs:/cntk/Examples/Image/Detection/utils/configs
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - PYTHONUNBUFFERED=TRUE
 
@@ -55,7 +79,7 @@ services:
       - "443:3000"
     command: ["bash", "-c", "npm install && npm start"]
     links:
-      - predict:predict_lb
+      - predict-lb:predict
 
   web:
     image: "node:8"

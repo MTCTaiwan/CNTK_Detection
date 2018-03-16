@@ -4,7 +4,7 @@
 # for full license information.
 # ==============================================================================
 
-import os, threading, json, time
+import os, threading, json, time, socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib
 from socketserver import ThreadingMixIn
@@ -60,7 +60,8 @@ class Server(BaseHTTPRequestHandler):
         results["status"] = True
         results["verbose"] = {
           'received': received,
-          'resloved': str(int(time.time()*1000))
+          'resloved': str(int(time.time()*1000)),
+          'host': socket.gethostname()
         }
         self.wfile.write(bytes(json.dumps(results), "utf8"))
         

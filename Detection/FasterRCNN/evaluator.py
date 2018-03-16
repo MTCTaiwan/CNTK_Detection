@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import cntk
 from cntk import input_variable, Axis
 from utils.nms_wrapper import apply_nms_to_single_image_results
 from utils.rpn.bbox_transform import regress_rois
@@ -13,6 +14,7 @@ from tqdm import tqdm
 
 class FasterRCNN_Evaluator:
     def __init__(self, eval_model, cfg):
+
         # load model once in constructor and push images through the model in 'process_image()'
         self._img_shape = (cfg.NUM_CHANNELS, cfg.IMAGE_HEIGHT, cfg.IMAGE_WIDTH)
         image_input = input_variable(shape=self._img_shape,
@@ -23,7 +25,6 @@ class FasterRCNN_Evaluator:
 
     def process_image_detailed(self, img):
         _, cntk_img_input, dims = resize_and_pad(img, self._img_shape[2], self._img_shape[1], 114)
-#        _, cntk_img_input, dims = load_resize_and_pad(img_path, self._img_shape[2], self._img_shape[1])
 
         cntk_dims_input = np.array(dims, dtype=np.float32)
         cntk_dims_input.shape = (1,) + cntk_dims_input.shape
@@ -147,23 +148,24 @@ def compute_test_set_aps(eval_model, cfg):
     print("[INFO] Evaluating Faster R-CNN model for %s images." % num_test_images)
     print("[INFO] It will take a while, please wait")
     all_gt_infos = {key: [] for key in classes}
-    pbar = tqdm(total=num_test_images)
-    pbar.set_description('EVA')
+    # pbar = tqdm(total=num_test_images)
+    # pbar.set_description('EVA')
     for img_i in range(0, num_test_images):
+        print('[VERBOSE] PROCESS %.2f%% (%d/%d) ' % (img_i/num_test_images*100, img_i, num_test_images))
         mb_data = minibatch_source.next_minibatch(1, input_map=input_map)
 
         gt_row = mb_data[roi_input].asarray()
         gt_row = gt_row.reshape((cfg.INPUT_ROIS_PER_IMAGE, 5))
         all_gt_boxes = gt_row[np.where(gt_row[:,-1] > 0)]
 
-        pbar.update(1)
+      #  pbar.update(1)
         for cls_index, cls_name in enumerate(classes):
             if cls_index == 0: continue
             cls_gt_boxes = all_gt_boxes[np.where(all_gt_boxes[:,-1] == cls_index)]
             all_gt_infos[cls_name].append({'bbox': np.array(cls_gt_boxes),
                                            'difficult': [False] * len(cls_gt_boxes),
                                            'det': [False] * len(cls_gt_boxes)})
-
+        device = cntk.device.use_default_device()
         output = frcn_eval.eval({image_input: mb_data[image_input], dims_input: mb_data[dims_input]})
         out_dict = dict([(k.name, k) for k in output])
         out_cls_pred = output[out_dict['cls_pred']][0]
@@ -184,8 +186,7 @@ def compute_test_set_aps(eval_model, cfg):
             all_boxes[cls_j][img_i] = coords_score_label_for_cls[:,:-1].astype(np.float32, copy=False)
 
 
-    pbar.close()
-
+#    pbar.close()
     # calculate mAP
     aps = evaluate_detections(all_boxes, all_gt_infos, classes,
                               use_gpu_nms = cfg.USE_GPU_NMS,

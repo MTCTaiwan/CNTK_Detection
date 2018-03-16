@@ -18,8 +18,7 @@
         mirror: false
       },
       audio: false
-    },
-    quality: 1.0
+    }
   }
 
   let time = Date.now()
@@ -68,7 +67,7 @@
       frame =  screenshot.getContext('2d')
 
 
-    setInterval(() => request(video, frame, render), 600)
+    request(video, frame, render)
 
   }
 
@@ -82,7 +81,7 @@
 
   let takeframe = (video, frame) => {
     frame.drawImage(video, 0, 0, video.width, video.height)
-    data = document.getElementById('screenshot').toDataURL('image/png', config.quality).replace('data:image/png;base64,', '')
+    data = document.getElementById('screenshot').toDataURL('image/png', parseFloat(document.getElementById('quality').value)).replace('data:image/png;base64,', '')
     return data
   }
 
@@ -135,11 +134,12 @@
     .then(response => {
       if (sendTime < time) {return} else {
         console.log(
+          "Host:", response.verbose.host,
           "Latency: ", Date.now() - sendTime, 
+          "Actual Latency: ", parseInt(document.getElementById('frequency').value) + (Date.now() - sendTime), 
           "MessageGo:", response.verbose.received - sendTime, 
           "Process:", (response.verbose.resloved - response.verbose.received),
           'MessageBack:', Date.now() - response.verbose.resloved,
-          "Total:", (response.verbose.received - sendTime) + (response.verbose.resloved - response.verbose.received) + (Date.now() - response.verbose.resloved),
           'Content-Length:', data.length,
         )
         time = sendTime
@@ -149,6 +149,7 @@
     })
     .catch(e => console.error(e))
     clearPhoto(frame)
+    setTimeout(() => request(video, frame, render), document.getElementById('frequency').value)
   }
 
   window.addEventListener('load', startup, false)

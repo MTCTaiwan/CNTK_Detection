@@ -5,3 +5,4 @@ __pycache__/
 *.swo
 *.pyc
 nvidia-docker-compose.yml
+Output/*

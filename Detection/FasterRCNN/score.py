@@ -23,12 +23,20 @@ def get_configuration():
 # trains and evaluates a Fast R-CNN model.
 if __name__ == '__main__':
 
-    print('[INFO] Initial')
     cfg = get_configuration()
 
-    print('[INFO] Verbose configuration')
     prepare(cfg, False)
-    print(json.dumps(cfg, indent=2, sort_keys=True))
+    # print('[INFO] Verbose configuration')
+    # print(json.dumps(cfg, indent=2, sort_keys=True))
+
+    # Lookup support devices
+    # print(cntk.device.all_devices())
+
+    # GPU Devices Support
+    device = cntk.device.try_set_default_device(cntk.device.gpu(cfg.GPU_ID), acquire_device_lock=True)
+    # CPU Only
+    # cntk.device.try_set_default_device(cntk.device.cpu())
+
 
     model_path = cfg['MODEL_PATH']
     if os.path.exists(model_path) == False: 
@@ -36,7 +44,7 @@ if __name__ == '__main__':
               'Please put your model file to Output/ directory,\n', \
               'Or run [nvidia-docker-compose up train] to train a new one')
         exit(1)
-    model = load_model(model_path)
+    model = load_model(model_path, device=cntk.device.gpu(cfg.GPU_ID))
     evaluator = FasterRCNN_Evaluator(model, cfg) 
     print('[SUCCESS] Model loaded, evalutor prepared')
     eval_results = compute_test_set_aps(model, cfg)

@@ -8,6 +8,7 @@ from __future__ import print_function
 from easydict import EasyDict as edict
 import zipfile
 import os, sys
+import docker
 
 def prepare_config():
     base_folder = os.path.dirname(os.path.abspath(__file__))
@@ -18,13 +19,27 @@ def prepare_config():
     __C.SSL_PATH = os.path.join(base_folder, '..', 'web', 'ssl')
     __C.SSL_CERT = os.path.join(__C.SSL_PATH, 'cert.pem')
     __C.SSL_KEY = os.path.join(__C.SSL_PATH, 'key.pem')
-
-    print(__file__, base_folder, cfg.DATASET_PREPARE, cfg.DATASET_BASE, cfg.PRETRAINED_MODEL)
-    print(cfg.PRETRAINED_MODEL, os.listdir(cfg.PRETRAINED_MODEL))
-    print(cfg.DATASET_BASE, os.listdir(cfg.DATASET_BASE))
-    print(cfg.DATASET_PREPARE, os.listdir(cfg.DATASET_PREPARE))
-
+    if not os.path.exists(__C.DATASET_PREPARE):
+        os.mkdir(__C.DATASET_PREPARE)
+    if not os.path.exists(cfg.SSL_PATH):
+        os.mkdir(cfg.SSL_PATH)
+    if not os.path.exists(__C.PRETRAINED_MODEL):
+        os.mkdir(__C.PRETRAINED_MODEL)
     return cfg
+
+def prepare_pull_images():
+    images = [
+        "starcaspar/rod:latest",
+        "tutum/haproxy:latest",
+        "node:8"
+    ]
+    print('[INFO] ===========================')
+    print('[INFO] STAGE 4: Preparing Docker Images')
+    daemon = docker.from_env()
+    for image in images:
+        print('[INFO] Docker pulling "%s"' % image)
+        daemon.images.pull(image)
+        print('[SUCCESS] Image pulled')
 
 def prepare_datasets(cfg):
     print('[INFO] ===========================')
@@ -32,8 +47,6 @@ def prepare_datasets(cfg):
 
 def prepare_ssl(cfg):
     from mk_certs import make_certs
-    if not os.path.exists(cfg.SSL_PATH):
-        os.mkdir(cfg.SSL_PATH)
     print('[INFO] =========================================')
     print('[INFO] STAGE 2: Generate self-signed certificate')
     make_certs(cfg)
@@ -51,3 +64,4 @@ if __name__ == '__main__':
     prepare_model(cfg)
     prepare_ssl(cfg)
     prepare_datasets(cfg)
+    prepare_pull_images()

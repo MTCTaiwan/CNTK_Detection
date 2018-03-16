@@ -1,6 +1,12 @@
+
 ```
-nvidia-docker-compose up web-lb predict-lb predict
-nvidia-docker-compose scale predict=2
+pip install nvidia-docker-compose
+nvidia-docker run --rm nvidia/cuda nvidia-smi
+```
+
+```
+nvidia-docker-compose up -t docker-compose.yml.jinja --force-recreate predict-core* web-lb predict-lb
+nvidia-docker-compose down -t docker-compose.yml.jinja
 ```
 
 ```

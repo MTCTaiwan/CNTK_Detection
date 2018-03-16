@@ -31,6 +31,9 @@ if __name__ == '__main__':
     cfg = get_configuration()
     prepare(cfg, False)
 
+    # Lookup support devices
+    # print(cntk.device.all_devices())
+
     # GPU Devices Support
     cntk.device.try_set_default_device(cntk.device.gpu(cfg.GPU_ID))
     # CPU Only
