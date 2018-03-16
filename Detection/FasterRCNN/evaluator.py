@@ -11,6 +11,7 @@ from utils.od_mb_source import ObjectDetectionMinibatchSource
 import base64
 import cv2
 from tqdm import tqdm
+from PIL import Image
 
 class FasterRCNN_Evaluator:
     def __init__(self, eval_model, cfg):
@@ -85,10 +86,9 @@ def get_results(evaluator, payload, cfg):
     img_shape = (cfg.NUM_CHANNELS, cfg.IMAGE_HEIGHT, cfg.IMAGE_WIDTH)
     # img_result = "{}/{}".format(results_base_path, os.path.basename(img_path))
 
-    img = base64.b64decode(payload); 
-    npimg = np.fromstring(img, dtype=np.uint8); 
-    source = cv2.imdecode(npimg, 1) 
-
+    pimg = np.fromstring(base64.b64decode(payload), np.uint8)
+    source = cv2.imdecode(pimg, cv2.IMREAD_COLOR)
+    
     out_cls_pred, out_rpn_rois, out_bbox_regr, dims = evaluator.process_image_detailed(source)
     labels = out_cls_pred.argmax(axis=1)
     scores = out_cls_pred.max(axis=1)

@@ -81,7 +81,7 @@
 
   let takeframe = (video, frame) => {
     frame.drawImage(video, 0, 0, video.width, video.height)
-    data = document.getElementById('screenshot').toDataURL('image/png', parseFloat(document.getElementById('quality').value)).replace('data:image/png;base64,', '')
+    data = document.getElementById('screenshot').toDataURL('image/jpeg', parseFloat(document.getElementById('quality').value)).replace('data:image/jpeg;base64,', '')
     return data
   }
 
@@ -133,13 +133,18 @@
     .then(r => r.json())
     .then(response => {
       if (sendTime < time) {return} else {
+        latency = Date.now() - sendTime
+        actLatency = parseInt(document.getElementById('frequency').value) + (Date.now() - sendTime)
+        messageGo = response.verbose.received - sendTime
+        process = response.verbose.resloved - response.verbose.received
+        messageBack = Date.now() - response.verbose.resloved
         console.log(
           "Host:", response.verbose.host,
-          "Latency: ", Date.now() - sendTime, 
-          "Actual Latency: ", parseInt(document.getElementById('frequency').value) + (Date.now() - sendTime), 
-          "MessageGo:", response.verbose.received - sendTime, 
-          "Process:", (response.verbose.resloved - response.verbose.received),
-          'MessageBack:', Date.now() - response.verbose.resloved,
+          "Latency: ", latency,
+          "Actual Latency: ", actLatency,
+          "MessageGo:", messageGo, parseInt(messageGo/latency*100) + '%',
+          "Process:", process, parseInt(process/latency*100) + '%',
+          'MessageBack:', messageBack, parseInt(messageBack/latency*100) + '%',
           'Content-Length:', data.length,
         )
         time = sendTime

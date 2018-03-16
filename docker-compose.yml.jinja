@@ -19,11 +19,9 @@ services:
       {% for i in range(N_GPU) %}
       - predict-core-{{i}}
       {% endfor %}
-#    volumes:
-#      - ./haproxy.cfg:/etc/haproxy/haproxy.cfg
     environment:
       - DNS_ENABLED=true
-      - BACKENDS=172.18.0.2 172.18.0.3
+      - BACKENDS=predict-core-0 predict-core-1
       - BACKENDS_PORT=8082
       - FRONTEND_PORT=8082
 
