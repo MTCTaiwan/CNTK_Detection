@@ -13,14 +13,14 @@ import docker
 def prepare_config():
     base_folder = os.path.dirname(os.path.abspath(__file__))
     cfg = __C = edict()
-    __C.DATASET_PREPARE = os.path.join(base_folder, '..', 'DataSets', 'prepare')
-    __C.DATASET_BASE = os.path.join(base_folder, '..', 'DataSets')
+    __C.DATASETS_PREPARE = os.path.join(base_folder, '..', 'DataSets', 'prepare')
+    __C.DATASETS_BASE = os.path.join(base_folder, '..', 'DataSets')
     __C.PRETRAINED_MODEL = os.path.join(base_folder, '..', 'PretrainedModels')
     __C.SSL_PATH = os.path.join(base_folder, '..', 'web', 'ssl')
     __C.SSL_CERT = os.path.join(__C.SSL_PATH, 'cert.pem')
     __C.SSL_KEY = os.path.join(__C.SSL_PATH, 'key.pem')
-    if not os.path.exists(__C.DATASET_PREPARE):
-        os.mkdir(__C.DATASET_PREPARE)
+    if not os.path.exists(__C.DATASETS_PREPARE):
+        os.mkdir(__C.DATASETS_PREPARE)
     if not os.path.exists(cfg.SSL_PATH):
         os.mkdir(cfg.SSL_PATH)
     if not os.path.exists(__C.PRETRAINED_MODEL):
@@ -39,11 +39,12 @@ def prepare_pull_images():
     for image in images:
         print('[INFO] Docker pulling "%s"' % image)
         daemon.images.pull(image)
-        print('[SUCCESS] Image pulled')
 
 def prepare_datasets(cfg):
+    from datasets import prepare_datasets
     print('[INFO] ===========================')
     print('[INFO] STAGE 3: Preparing Datasets')
+    prepare_datasets(cfg)
 
 def prepare_ssl(cfg):
     from mk_certs import make_certs

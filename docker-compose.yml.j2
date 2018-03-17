@@ -1,17 +1,16 @@
 version: '3'
 services:
   prepare:
-    image: "adreeve/python-numpy:latest"
-    working_dir: /data/prepare
-    command: ["bash", "-c", "pip install easydict pyopenssl docker && python -u install.py"]
+    image: "starcaspar/rod:prepare"
+    command: ["bash", "-c", "python -u install.py"]
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./DataSets:/data/DataSets
       - ./Output:/data/Output
       - ./configs:/data/configs
       - ./PretrainedModels:/data/PretrainedModels
       - ./web:/data/web
       - ./prepare:/data/prepare
-      - /var/run/docker.sock:/var/run/docker.sock
  
   predict-lb:
     image: "eeacms/haproxy:latest"
