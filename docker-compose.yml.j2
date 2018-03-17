@@ -21,7 +21,7 @@ services:
       {% endfor %}
     environment:
       - DNS_ENABLED=true
-      - BACKENDS=predict-core-0 predict-core-1
+      - BACKENDS={% for i in range(N_GPU) %}predict-core-{{i}} {% endfor %}
       - BACKENDS_PORT=8082
       - FRONTEND_PORT=8082
 
