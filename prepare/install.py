@@ -62,7 +62,7 @@ def prepare_model(cfg):
 
 if __name__ == '__main__':
     cfg = prepare_config()
-    prepare_model(cfg)
-    prepare_ssl(cfg)
+#    prepare_model(cfg)
+#    prepare_ssl(cfg)
     prepare_datasets(cfg)
-    prepare_pull_images()
+#    prepare_pull_images()
