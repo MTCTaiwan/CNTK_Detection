@@ -6,6 +6,13 @@
 # ==============================================================================
 
 import sys, os, re
+import numpy as np
+import scipy.io as sio
+import xml.etree.ElementTree
+from xml.etree import ElementTree
+from enum import Enum
+from PIL import Image
+
 from easydict import EasyDict as edict
 
 def verify_files(cfg):
@@ -91,21 +98,20 @@ def verify_files(cfg):
     cfg.DATASETS.IMAGE_FILES = img_files
     cfg.DATASETS.ANNOTATION_FILES = xml_files
     cfg.DATASETS.IMAGESETS_FILES = eva_files
-    cfg.DATASETS.CLASSES = class_sets
+    cfg.DATASETS.CLASSES = ['__background__'] + class_sets
     cfg.DATASETS.BASENAMES = xml_sets
     cfg.DATASETS.IMAGESETS_PATH = os.path.join(cfg.DATASETS_PREPARE, require[0], "Main")
     cfg.DATASETS.IMAGES_PATH = os.path.join(cfg.DATASETS_PREPARE, require[1])
     cfg.DATASETS.ANNOTATIONS_PATH = os.path.join(cfg.DATASETS_PREPARE, require[2])
-
-    return cfg
+    cfg.DATASETS.PADS = 5
 
 def rename_all(cfg):
     all_steps = 4
     print('[VERBOSE] Renaming (1/%d) image files' % all_steps)
     os.chdir(os.path.join(cfg.PREPARE, cfg.DATASETS.IMAGES_PATH))
     for i, name in enumerate(cfg.DATASETS.BASENAMES):
-        os.rename(name + '.jpg', str(i).zfill(5) + '.jpg')
-        print('[VERBOSE] Renaming %s to %s' % (name + '.jpg', str(i).zfill(5) + '.jpg'))
+        os.rename(name + '.jpg', str(i).zfill(cfg.DATASETS.PADS) + '.jpg')
+        print('[VERBOSE] Renaming %s to %s' % (name + '.jpg', str(i).zfill(cfg.DATASETS.PADS) + '.jpg'))
 
     print('[VERBOSE] Rewriting (2/%d) annotation content' % all_steps)
     os.chdir(os.path.join(cfg.PREPARE, cfg.DATASETS.ANNOTATIONS_PATH))
@@ -116,7 +122,7 @@ def rename_all(cfg):
                 for target in ['path', 'filename']:
                     if '<%s>' % target in line:
                         split = re.compile("</?%s>" % target).split(line)
-                        line = '%s<%s>%s.xml</%s>%s' % (split[0], target, str(i).zfill(5), target, split[2])
+                        line = '%s<%s>%s.xml</%s>%s' % (split[0], target, str(i).zfill(cfg.DATASETS.PADS), target, split[2])
                 modified += [line]
         with open(name + '.xml', 'w') as f:
             f.write(''.join(modified))
@@ -124,11 +130,14 @@ def rename_all(cfg):
     print('[VERBOSE] Renaming (3/%d) annotation files' % all_steps)
     os.chdir(os.path.join(cfg.PREPARE, cfg.DATASETS.ANNOTATIONS_PATH))
     for i, name in enumerate(cfg.DATASETS.BASENAMES):
-        os.rename(name + '.xml', str(i).zfill(5) + '.xml')
-        print('[VERBOSE] Renaming %s to %s' % (name + '.xml', str(i).zfill(5) + '.xml'))
+        os.rename(name + '.xml', str(i).zfill(cfg.DATASETS.PADS) + '.xml')
+        print('[VERBOSE] Renaming %s to %s' % (name + '.xml', str(i).zfill(cfg.DATASETS.PADS) + '.xml'))
 
     print('[VERBOSE] Renaming (4/%d) imagessets contents' % all_steps)
     os.chdir(os.path.join(cfg.PREPARE, cfg.DATASETS.IMAGESETS_PATH))
+
+    train_sets = []
+    test_sets = []
     for imageset in cfg.DATASETS.IMAGESETS_FILES:
         modified = []
         with open(imageset, 'r') as f:
@@ -138,10 +147,153 @@ def rename_all(cfg):
                 if i < 0:
                     print('[ERROR] name "%s" on line %s  is not exist in datasets' % (name, len(modified)))
                     exit(1)
-                modified += [line.replace(name, str(i).zfill(5))]
+                modified += [line.replace(name, str(i).zfill(cfg.DATASETS.PADS))]
+                if imageset.endswith('train.txt'):
+                    train_sets += [str(i).zfill(cfg.DATASETS.PADS)]
+                else:
+                    test_sets += [str(i).zfill(cfg.DATASETS.PADS)]
         with open(imageset, 'w') as f:
-             f.write(''.join(modified))
+            f.write(''.join(modified))
+
+    for trainval in ['train', 'test']:
+        with open('%s.txt' % trainval, 'w') as f:
+            f.write('\n'.join(list(set(train_sets if trainval == 'train' else test_sets)))+ '\n')
+    os.chdir(cfg.DATASETS_PREPARE)
+    cfg.DATASETS.TRAIN_SETS = train_sets
+    cfg.DATASETS.TEST_SETS = test_sets
+
+def format_roi(cls_index, xmin, ymin, xmax, ymax, img_file_path):
+    use_relative_coords_ctr_wh = False
+    use_pad_scale = False
+    pad_width = 850
+    pad_height = 850
+    posx = xmin
+    posy = ymin
+    width = (xmax - xmin)
+    height = (ymax - ymin)
+
+    if use_pad_scale or use_relative_coords_ctr_wh:
+        img_width, img_height = Image.open(img_file_path).size
+
+        if use_pad_scale:
+            scale_x = (1.0 * pad_width) / img_width
+            scale_y = (1.0 * pad_height) / img_height
+
+            min_scale = min(scale_x, scale_y)
+            new_width = round(img_width * min_scale)
+            new_height = round(img_height * min_scale)
+            assert(new_width == pad_width or new_height == pad_height)
+            assert(new_width <= pad_width and new_height <= pad_height)
+
+            offset_x = (pad_width - new_width) / 2
+            offset_y = (pad_height - new_height) / 2
+
+            width = round(width * min_scale)
+            height = round(height * min_scale)
+            posx = round(posx * min_scale + offset_x)
+            posy = round(posy * min_scale + offset_y)
+
+            norm_width = pad_width
+            norm_height = pad_height
+        else:
+            norm_width = img_width
+            norm_height = img_height
+
+        if use_relative_coords_ctr_wh:
+            ctrx = xmin + width / 2
+            ctry = ymin + height / 2
+
+            width = float(width) / norm_width
+            height = float(height) / norm_height
+            ctrx = float (ctrx) / norm_width
+            ctry = float(ctry) / norm_height
+
+    if use_relative_coords_ctr_wh:
+        return "{:.4f} {:.4f} {:.4f} {:.4f} {} ".format(ctrx, ctry, width, height, cls_index)
+    else:
+        posx2 = posx + width
+        posy2 = posy + height
+        return "{} {} {} {} {} ".format(int(posx), int(posy), int(posx2), int(posy2), cls_index)
+ 
+
+def create_mapping_file(cfg, train=None):
+    prefix = 'train' if train else 'test'
+    print('[VERBOSE] Mapping %s file' % prefix)
+    img_map_input = '%s.txt' % prefix 
+    img_map_output = '%s_img_file.txt' % prefix 
+    rot_map_output = '%s_roi_file.txt' % prefix
+    in_map_file_path = os.path.join(cfg.DATASETS.IMAGESETS_PATH, img_map_input)
+    out_map_file_path = os.path.join('mappings', img_map_output)
+    roi_file_path = os.path.join('mappings', rot_map_output)
+
+    if not os.path.exists('mappings'):
+        os.mkdir('mappings')
+
+    with open(in_map_file_path) as input_file:
+        input_lines = input_file.readlines()
+
+    with open(out_map_file_path, 'w') as img_file: 
+        with open(roi_file_path, 'w') as roi_file:
+            for counter, line in enumerate(input_lines):
+                img_number = line.strip()
+                prepare_img_file_path = '%s/%s.jpg' % (cfg.DATASETS.IMAGES_PATH, img_number)
+                datasets_img_file_path = '../JPEGImages/%s.jpg' % (img_number)
+                img_line = "{}\t{}\t0\n".format(counter, datasets_img_file_path)
+                img_file.write(img_line)
+
+                annotation_file = os.path.join(cfg.DATASETS_PREPARE, cfg.DATASETS.ANNOTATIONS_PATH, '%s.xml' % img_number)
+                annotations = ElementTree.parse(annotation_file).getroot()
+                roi_line = "%d |roiAndLabel " % counter
+                for obj in annotations.findall('object'):
+                    cls = obj.findall('name')[0].text
+                    cls_index = cfg.DATASETS.CLASSES.index(cls)
+                    bbox = obj.findall('bndbox')[0]
+                    xmin = int(bbox.findall('xmin')[0].text)
+                    ymin = int(bbox.findall('ymin')[0].text)
+                    xmax = int(bbox.findall('xmax')[0].text)
+                    ymax = int(bbox.findall('ymax')[0].text)
+                    roi_line += format_roi(cls_index, xmin, ymin, xmax, ymax, prepare_img_file_path)
+                roi_file.write(roi_line + "\n")
+                print('[VERBOSE] Processed %s (%d/%d)' % (img_number, counter, len(input_lines)))
+
+def create_mappings(cfg):
+    class_map_file_path = os.path.join(cfg.DATASETS_PREPARE, "class_map.txt")
+
+    print('[VERBOSE] Create "class_map.txt"')
+    with open(class_map_file_path, 'w') as class_map_file:
+        for i, name in enumerate(cfg.DATASETS.CLASSES):
+            class_map_file.write("{}\t{}\n".format(name, i))
+
+
+    create_mapping_file(cfg, train=True) 
+    create_mapping_file(cfg, train=False)
+    
+def copy_datasets(cfg):
+    os.chdir(os.path.join(cfg.DATASETS_PREPARE, '..'))
+    os.rename('prepare', 'Custom')
+    os.mkdir('prepare')
+
+def setting_config(cfg):
+    modified = []
+    with open(os.path.join(cfg.PREPARE, '..', 'configs', 'Custom_config.py'), 'r') as f:
+        for line in f:
+            if 'DATA.NUM_TRAIN_IMAGES' in line:
+                option = line.split(' ')[0]
+                line = '%s = %d' % (option, len(cfg.DATASETS.TRAIN_SETS))
+
+            if 'DATA.NUM_TEST_IMAGES' in line:
+                option = line.split(' ')[0]
+                line = '%s = %d' % (option, len(cfg.DATASETS.TEST_SETS))
+
+        modified += [line]
+
+    with open(os.path.join(cfg.PREPARE, '..', 'configs', 'Custom_config.py'), 'w') as f:
+        f.write(''.join(modified))
 
 def prepare_datasets(cfg):
-    cfg = verify_files(cfg)
+    verify_files(cfg)
     rename_all(cfg)
+    create_mappings(cfg)
+    copy_datasets(cfg)
+    setting_config(cfg)
+
