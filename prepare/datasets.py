@@ -159,8 +159,8 @@ def rename_all(cfg):
         with open('%s.txt' % trainval, 'w') as f:
             f.write('\n'.join(list(set(train_sets if trainval == 'train' else test_sets)))+ '\n')
     os.chdir(cfg.DATASETS_PREPARE)
-    cfg.DATASETS.TRAIN_SETS = train_sets
-    cfg.DATASETS.TEST_SETS = test_sets
+    cfg.DATASETS.TRAIN_SETS = list(set(train_sets))
+    cfg.DATASETS.TEST_SETS = list(set(test_sets))
 
 def format_roi(cls_index, xmin, ymin, xmax, ymax, img_file_path):
     use_relative_coords_ctr_wh = False
@@ -226,9 +226,6 @@ def create_mapping_file(cfg, train=None):
     out_map_file_path = os.path.join('mappings', img_map_output)
     roi_file_path = os.path.join('mappings', rot_map_output)
 
-    if not os.path.exists('mappings'):
-        os.mkdir('mappings')
-
     with open(in_map_file_path) as input_file:
         input_lines = input_file.readlines()
 
@@ -254,10 +251,14 @@ def create_mapping_file(cfg, train=None):
                     ymax = int(bbox.findall('ymax')[0].text)
                     roi_line += format_roi(cls_index, xmin, ymin, xmax, ymax, prepare_img_file_path)
                 roi_file.write(roi_line + "\n")
-                print('[VERBOSE] Processed %s (%d/%d)' % (img_number, counter, len(input_lines)))
+                print('[VERBOSE] Processed %s (%d/%d)' % (img_number, counter, len(input_lines)-1))
 
 def create_mappings(cfg):
-    class_map_file_path = os.path.join(cfg.DATASETS_PREPARE, "class_map.txt")
+
+    if not os.path.exists('mappings'):
+        os.mkdir('mappings')
+
+    class_map_file_path = os.path.join(cfg.DATASETS_PREPARE, 'mappings', 'class_map.txt')
 
     print('[VERBOSE] Create "class_map.txt"')
     with open(class_map_file_path, 'w') as class_map_file:
@@ -279,13 +280,12 @@ def setting_config(cfg):
         for line in f:
             if 'DATA.NUM_TRAIN_IMAGES' in line:
                 option = line.split(' ')[0]
-                line = '%s = %d' % (option, len(cfg.DATASETS.TRAIN_SETS))
+                line = '%s = %d\n' % (option, len(cfg.DATASETS.TRAIN_SETS))
 
             if 'DATA.NUM_TEST_IMAGES' in line:
                 option = line.split(' ')[0]
-                line = '%s = %d' % (option, len(cfg.DATASETS.TEST_SETS))
-
-        modified += [line]
+                line = '%s = %d\n' % (option, len(cfg.DATASETS.TEST_SETS))
+            modified += [line]
 
     with open(os.path.join(cfg.PREPARE, '..', 'configs', 'Custom_config.py'), 'w') as f:
         f.write(''.join(modified))
@@ -297,3 +297,4 @@ def prepare_datasets(cfg):
     copy_datasets(cfg)
     setting_config(cfg)
 
+    print('[SUCCESS] Datasets ready')

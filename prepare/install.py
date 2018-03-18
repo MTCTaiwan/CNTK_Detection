@@ -21,18 +21,15 @@ def prepare_config():
     __C.SSL_PATH = os.path.join(base_folder, '..', 'web', 'ssl')
     __C.SSL_CERT = os.path.join(__C.SSL_PATH, 'cert.pem')
     __C.SSL_KEY = os.path.join(__C.SSL_PATH, 'key.pem')
-    if not os.path.exists(cfg.DATASETS_PREPARE):
-        os.mkdir(cfg.DATASETS_PREPARE)
-    if not os.path.exists(cfg.SSL_PATH):
-        os.mkdir(cfg.SSL_PATH)
-    if not os.path.exists(cfg.PRETRAINED_MODEL):
-        os.mkdir(cfg.PRETRAINED_MODEL)
     return cfg
 
 def prepare_datasets(cfg):
     from datasets import prepare_datasets
     print('[INFO] ===========================')
     print('[INFO] STAGE 4: Preparing Datasets')
+    if os.path.exists(os.path.join(cfg.DATASETS_BASE, 'Custom')):
+        print('[SKIPPED] Custom Datasets detected, skip this stage')
+        return
     prepare_datasets(cfg)
 
 def prepare_pull_images():
@@ -52,6 +49,8 @@ def prepare_ssl(cfg):
     from mk_certs import make_certs
     print('[INFO] =========================================')
     print('[INFO] STAGE 2: Generate self-signed certificate')
+    if not os.path.exists(cfg.SSL_PATH):
+        os.mkdir(cfg.SSL_PATH)
     make_certs(cfg)
     
 
@@ -59,12 +58,14 @@ def prepare_model(cfg):
     from download_model import download_model_by_name
     print('[INFO] ==================================')
     print('[INFO] STAGE 1: Download pretrained model')
+    if not os.path.exists(cfg.PRETRAINED_MODEL):
+        os.mkdir(cfg.PRETRAINED_MODEL)
     download_model_by_name("VGG16_ImageNet_Caffe", cfg.PRETRAINED_MODEL)
 
 
 if __name__ == '__main__':
     cfg = prepare_config()
-#    prepare_model(cfg)
-#    prepare_ssl(cfg)
-#    prepare_pull_images()
+    prepare_model(cfg)
+    prepare_ssl(cfg)
+    prepare_pull_images()
     prepare_datasets(cfg)

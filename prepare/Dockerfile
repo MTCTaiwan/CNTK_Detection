@@ -1,4 +1,4 @@
-FROM adreeve/python-numpy:latest
+FROM starcaspar/rod:latest
 RUN pip install easydict pyopenssl docker
 
 VOLUME [ "/data/DataSets", \
