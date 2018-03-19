@@ -35,7 +35,7 @@ def prepare_datasets(cfg):
 def prepare_pull_images():
     images = [
         "starcaspar/rod:latest",
-        "tutum/haproxy:latest",
+        "eeacms/haproxy:latest",
         "node:8"
     ]
     print('[INFO] ===========================')
