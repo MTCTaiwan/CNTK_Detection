@@ -568,22 +568,23 @@ def train_model(image_input, roi_input, dims_input, loss, pred_error,
         input_map[od_minibatch_source.dims_si] = dims_input
 
     print('[INFO] It will take a while to load things, please wait.')
-    progress_printer = ProgressPrinter(tag='Training', num_epochs=epochs_to_train, gen_heartbeat=True)
-    epoch_pbar = tqdm(total=epochs_to_train)
-    epoch_pbar.set_description("Epochs ")
+    progress_printer = ProgressPrinter(tag='Training', num_epochs=epochs_to_train, gen_heartbeat=False)
     for epoch in range(epochs_to_train):       # loop over epochs
         sample_count = 0
-        sample_pbar = tqdm(total=cfg["DATA"].NUM_TRAIN_IMAGES)
-        sample_pbar.set_description("Sample ")
+ #       sample_pbar = tqdm(total=cfg["DATA"].NUM_TRAIN_IMAGES)
+ #       sample_pbar.set_description("Sample ")
         while sample_count < cfg["DATA"].NUM_TRAIN_IMAGES:  # loop over minibatches in the epoch
             data = od_minibatch_source.next_minibatch(min(cfg.MB_SIZE, cfg["DATA"].NUM_TRAIN_IMAGES-sample_count), input_map=input_map)
             trainer.train_minibatch(data)                                    # update model with it
             sample_count += trainer.previous_minibatch_sample_count          # count samples processed so far
-            # progress_printer.update_with_trainer(trainer, with_metric=True)  # log progress
+            # print(trainer.previous_minibatch_loss_average,
+            #     trainer.previous_minibatch_sample_count,
+            #     trainer.previous_minibatch_evaluation_average)
+            # update logger
+            progress_printer.update_with_trainer(trainer, with_metric=True)  # log progress
+            #sample_pbar.update(1)
             # if sample_count % 100 == 0:
-            #    print("Processed %d/%d samples (%.2f%%)" % (sample_count, cfg["DATA"].NUM_TRAIN_IMAGE, sample_count/cfg["DATA"].NUM_TRAIN_IMAGES))
-            sample_pbar.update(1)
-        sample_pbar.close()
+            print("\tProcessed %d/%d samples (%.2f%%)" % (sample_count, cfg["DATA"].NUM_TRAIN_IMAGES, sample_count/cfg["DATA"].NUM_TRAIN_IMAGES*100))
+#        sample_pbar.close()
         progress_printer.epoch_summary(with_metric=True)
-        epoch_pbar.update(1)
-    epoch_pbar.close()
+#    epoch_pbar.close()
