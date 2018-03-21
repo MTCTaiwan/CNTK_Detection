@@ -79,6 +79,7 @@ def verify_files(cfg):
             with open(os.path.join(cfg.DATASETS_PREPARE, require[0], "Main", (classes + postfix)), 'r') as f:
                 for line in f:
                     if not line.split(' ')[0] in img_sets:
+                        if line == '\n': continue
                         print('[ERROR] missing jpg/xml file "%s"' % line.split(' ')[0])
                         failed = True
                     eva_sets += [line.split(' ')[0]]
@@ -103,7 +104,7 @@ def verify_files(cfg):
     cfg.DATASETS.IMAGESETS_PATH = os.path.join(cfg.DATASETS_PREPARE, require[0], "Main")
     cfg.DATASETS.IMAGES_PATH = os.path.join(cfg.DATASETS_PREPARE, require[1])
     cfg.DATASETS.ANNOTATIONS_PATH = os.path.join(cfg.DATASETS_PREPARE, require[2])
-    cfg.DATASETS.PADS = 5
+    cfg.DATASETS.PADS = int(len(str(len(cfg.DATASETS.IMAGE_FILES)))) + 1
 
 def rename_all(cfg):
     all_steps = 4
@@ -143,6 +144,7 @@ def rename_all(cfg):
         with open(imageset, 'r') as f:
             for line in f:
                 name = line.split(' ')[0]
+                if name == '\n': continue
                 i = cfg.DATASETS.BASENAMES.index(name)
                 if i < 0:
                     print('[ERROR] name "%s" on line %s  is not exist in datasets' % (name, len(modified)))
