@@ -41,7 +41,7 @@
           var vendorURL = window.URL || window.webkitURL
           video.src = vendorURL.createObjectURL(stream)
         }
-        video.play()
+        setTimeout(() => video.play(), 1000)
       },
       (err) => {
         console.log("An error occured! " + err)
